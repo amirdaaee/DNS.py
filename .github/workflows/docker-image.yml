@@ -1,0 +1,24 @@
+name: Docker Image CI
+
+on:
+  push:
+    tags:
+      - v*.*.*
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --target production --tag amirdaaee/dnspy:latest --tag amirdaaee/dnspy:${GITHUB_REF#refs/*/}
+    - name: login to docker hub
+      run: docker login -u amirdaaee -p $DOCKERHUB_PASSWORD
+      env:
+        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+    - name: push to dockerhub
+      run: |
+        docker push  amirdaaee/dnspy:latest
+        docker push  amirdaaee/dnspy:${GITHUB_REF#refs/*/}
+        
+        
+    
