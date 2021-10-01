@@ -9,7 +9,7 @@ from ipaddress import IPv4Address
 from os import environ
 from typing import Optional, List
 
-from pydantic import BaseSettings, conint, create_model
+from pydantic import BaseSettings, conint, create_model, Field
 
 from DNS.Logging import logger
 from DNS.Logging import reload as relog
@@ -19,11 +19,11 @@ port_type = conint(ge=0, le=65353)
 
 
 class _BaseSettingType(BaseSettings):
-    local_ip: IPv4Address = '127.0.0.1'
-    local_port: port_type = 5053
-    upstream_ip: IPv4Address = '8.8.8.8'
-    upstream_port: port_type = 53
-    plugins: List[str] = []
+    local_ip: IPv4Address = Field(title='local ip to bind', default='127.0.0.1')
+    local_port: port_type = Field(title='local port to bind', default='5053')
+    upstream_ip: IPv4Address = Field(title='upstream DNS server ip', default='8.8.8.8')
+    upstream_port: port_type = Field(title='upstream DNS server port', default=53)
+    plugins: List[str] = Field(title='plugins to activate', default=[])
 
     class Config:
         env_prefix = 'DNSPY__'
@@ -39,7 +39,7 @@ class Configuration:
         relog()
 
     @classmethod
-    def _get_all_plugins(cls):
+    def get_all_plugins(cls):
         def _plugin_check(obj):
             if inspect.isclass(obj):
                 if issubclass(obj, BasePlugin):
@@ -69,17 +69,15 @@ class Configuration:
         return conf
 
     @classmethod
-    def load(cls):
-        plugins_all = cls._get_all_plugins()
-        print('available plugins:', plugins_all.keys())
-        plugins_active_ = json.loads(environ.get('DNSPY__PLUGINS', '[]'))
+    def load(cls, active_all_plugins=False):
+        plugins_all = cls.get_all_plugins()
+        plugins_active_ = plugins_all if active_all_plugins else json.loads(environ.get('DNSPY__PLUGINS', '[]'))
         plugins_active = []
         for i_ in plugins_active_:
             if i_ not in plugins_all.keys():
                 logger.warning(f'plugin {i_} not found. skipping...')
                 continue
             plugins_active.append(i_)
-        print('activated plugins:', plugins_active)
 
         plugins_conf = {}
         for i_ in plugins_active:
@@ -99,6 +97,7 @@ class Configuration:
         global _settings
         _settings = data
         cls.global_config(data)
+        return cls
 
 
 def __getattr__(name):

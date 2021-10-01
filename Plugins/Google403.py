@@ -4,6 +4,7 @@ from typing import Optional
 import aiohttp
 import dns.rdatatype
 from aiohttp.client_exceptions import ClientError
+from pydantic import Field
 from pydantic import RedisDsn
 
 from DNS.Logging import logger
@@ -13,16 +14,35 @@ from Plugins.Authoritative import _Authoritative
 # todo: cname response support [for A type request]
 
 CONFIG = {
-    'redis_uri': (Optional[RedisDsn], None)
+    'redis_uri': (Optional[RedisDsn],
+                  Field(title='redis server uri. if None, will use Authoritative plugin redis_uri', default=None))
 }
 
 
 class Inquirer(_Authoritative):
+    """
+    resolve auto-detected google403 blocked domains with sni proxy IP
+    this plugin must be used in conjunction with plugin Authoritative.BlackList and that must be defined before
+    this plugin.
+    Authoritative.BlackList response_ip should be set to SNI proxy ip
+    """
     CONFIG = {
-        'redis_key_que': (str, 'G403_que'),
-        'redis_key_open': (str, 'G403_open'),
-        'redis_key_block': (str, 'G403_block'),
-        'redis_key_unknown': (str, 'G403_unknown')
+        'redis_key_que': (
+            str,
+            Field(title='key to read/write Inquiring que in redis server [set]', default='G403_que')
+        ),
+        'redis_key_open': (
+            str,
+            Field(title='key to read/write open domains in redis server [set]', default='G403_open')
+        ),
+        'redis_key_block': (
+            str,
+            Field(title='key to read/write blocked domains in redis server [set]', default='G403_block')
+        ),
+        'redis_key_unknown': (
+            str,
+            Field(title='key to read/write domains with unknown state in redis server [set]', default='G403_unknown')
+        )
     }
 
     def __init__(self, plugins, *args, **kwargs):

@@ -8,6 +8,7 @@ import dns.message
 import dns.rdtypes.ANY.CNAME
 import dns.rdtypes.IN.A
 import dns.rrset
+from pydantic import Field
 from pydantic import RedisDsn
 
 import DNS.Config
@@ -19,8 +20,8 @@ from Plugins.Base import BasePlugin
 # todo: cname response support [for A type request]
 
 CONFIG = {
-    'redis_uri': (RedisDsn, ...),
-    'default_ttl': (int, 0)
+    'redis_uri': (RedisDsn, Field(title='redis server uri')),
+    'default_ttl': (int, Field(title='default ttl to assign to the answers', default=0))
 }
 
 
@@ -59,14 +60,14 @@ class LocalDB(_Authoritative):
     """
     queries domain name from redis DB and response respectively. doesn't touch anything if answer not in local DB
     notes:
+        - data should be stored in redis db in a hash (e.g.: {example.com: ip1;ip2;...})
         - currently just supports "A" type question and response
         - domains should be stored in db without trailing dot
-        - multiple ips for domain can be set using ";" delimiter
         - subdomain wildcard is supported (e.g. *.google.com)
     """
 
     CONFIG = {
-        'redis_key_A': (str, 'LocalDB'),
+        'redis_key_A': (str, Field(title='key to read resolve data from redis server [hash]', default='LocalDB')),
     }
 
     async def before_resolve(self, query, response, *args, **kwargs):
@@ -88,17 +89,21 @@ class LocalDB(_Authoritative):
 
 class BlackList(_Authoritative):
     """
-    doesn't touch any questions except some hosts defined in redis db which will resolve to predefined ip
+    doesn't touch any questions except some hosts defined in redis db (as blacklisted) which will resolve
+    to predefined ip
     notes:
+        - blacklisted domains should be stored in redis db in a set (e.g.: [example.com,*.example.com,...])
         - currently just supports "A" type question and response
-        - domains should be stored in db without trailing dot
         - subdomain wildcard is supported (e.g. *.google.com)
     """
 
     CONFIG = {
-        'redis_key_A': (str, 'BLDB'),
-        'response_ip': (List[IPv4Address], ...),
-        'ttl': (Optional[int], None)
+        'redis_key_A': (str, Field(title='key to read blacklisted domains from redis server [set]', default='BLDB')),
+        'response_ip': (List[IPv4Address], Field(title='ips to response for blacklisted domains')),
+        'ttl': (
+            Optional[int],
+            Field(title='ttl to assign to the answers. if None, will use module level default_ttl', default=None)
+        )
     }
 
     async def before_resolve(self, query, response, *args, **kwargs):
@@ -124,17 +129,21 @@ class BlackList(_Authoritative):
 
 class WhiteList(_Authoritative):
     """
-    response all questions with predefined ip except some hosts defined in redis db which will be untouched
+    response all questions with predefined ip except some hosts defined in redis db (as whitelisted)
+    which will be untouched
     notes:
+        - whitelisted domains should be stored in redis db in a set (e.g.: [example.com,*.example.com,...])
         - currently just supports "A" type question and response
-        - domains should be stored in db without trailing dot
         - subdomain wildcard is supported (e.g. *.google.com)
     """
 
     CONFIG = {
-        'redis_key_A': (str, 'WLDB'),
-        'response_ip': (List[IPv4Address], ...),
-        'ttl': (Optional[int], None)
+        'redis_key_A': (str, Field(title='key to read whitelisted domains from redis server [set]', default='WLDB')),
+        'response_ip': (List[IPv4Address], Field(title='ips to response for non whitelist domains')),
+        'ttl': (
+            Optional[int],
+            Field(title='ttl to assign to the answers. if None, will use module level default_ttl', default=None)
+        )
     }
 
     async def before_resolve(self, query, response, *args, **kwargs):

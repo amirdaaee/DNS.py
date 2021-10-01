@@ -1,15 +1,20 @@
+from pydantic import Field
+
 from DNS.Logging import logger
 from Plugins.Base import BasePlugin
 
 CONFIG = {
-    'log_level': (str, 'info')
+    'log_level': (str, Field(title='level of logs to write', default='info'))
 }
 
 
 class Log(BasePlugin):
+    """
+    log query data
+    """
     CONFIG = {
-        'question': (bool, False),
-        'answer': (bool, True),
+        'question': (bool, Field(title='log question query', default=False)),
+        'answer': (bool, Field(title='log answer query', default=True)),
     }
 
     @staticmethod

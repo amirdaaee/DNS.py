@@ -1,15 +1,21 @@
+from pydantic import Field
+
 from Plugins.Base import BasePlugin
 
 CONFIG = {
-    'message_before_module_level': (str, 'hello world'),
-    'message_after_module_level': (str, 'goodbye world')
+    'message_before_module_level': (str,
+                                    Field(title='message to print before upstream resolve', default='hello world')),
+    'message_after_module_level': (str, Field(title='message to print after upstream resolve', default='goodbye world'))
 }
 
 
 class ExamplePlugin(BasePlugin):
+    """
+    print message before and after upstream resolve
+    """
     CONFIG = {
-        'message_before': (str, 'hello dns'),
-        'message_after': (str, 'goodbye dns'),
+        'message_before': (str, Field(title='message to print before upstream resolve', default='hello dns')),
+        'message_after': (str, Field(title='message to print after upstream resolve', default='goodbye dns')),
     }
 
     def before_resolve(self, query, response, *args, **kwargs):
