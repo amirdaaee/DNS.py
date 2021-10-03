@@ -1,0 +1,13 @@
+services:
+  dnspy:
+    image: amirdaaee/dnspy:latest
+    container_name: dnspy
+    ports:
+      - 5053:5053
+    environment:
+      DNSPY__LOCAL_IP: 0.0.0.0
+      DNSPY__LOCAL_PORT: 5053
+      DNSPY__UPSTREAM_IP: 8.8.8.8
+      DNSPY__UPSTREAM_PORT: 53
+      LOGURU_LEVEL: 'INFO'
+    restart: unless-stopped
