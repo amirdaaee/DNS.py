@@ -1,9 +1,10 @@
 import asyncio
+from asyncio.exceptions import TimeoutError
 from typing import Optional
 
 import aiohttp
 import dns.rdatatype
-from aiohttp.client_exceptions import ClientError
+from aiohttp.client_exceptions import ClientError,ServerTimeoutError
 from pydantic import Field
 from pydantic import RedisDsn
 
@@ -75,7 +76,7 @@ class Inquirer(_Authoritative):
     async def _init_db(self):
         members = await self.redis.smembers(self.config.redis_key_block)
         if members:
-            await self.add_domains(self.resolver_key, *members)
+            await self.add_domains(*members)
             logger.info(f'added {len(members)} domain to {self.resolver_key}')
         return
 
@@ -86,32 +87,37 @@ class Inquirer(_Authoritative):
             query = await self.redis.spop(self.config.redis_key_que)
             if query:
                 logger.info(f'got {query} to inquire')
-                mode = await self.is_blocked(query)
-                add2resolver = False
-                if mode == 'o':
-                    key = self.config.redis_key_open
-                elif mode == 'b':
-                    key = self.config.redis_key_block
-                    add2resolver = True
-                else:
-                    key = self.config.redis_key_unknown
-                await self.redis.sadd(key, query)
-                if add2resolver:
-                    await self.add_domains(self.resolver_key, query)
-                    logger.info(f'added {query} to {self.resolver_key}')
+                asyncio.create_task(self.inquire(query))
             else:
                 logger.trace(f'no query to inquire')
                 await asyncio.sleep(1)
 
+    async def inquire(self, host):
+        mode = await self.is_blocked(host)
+        add2resolver = False
+        if mode == 'o':
+            key = self.config.redis_key_open
+        elif mode == 'b':
+            key = self.config.redis_key_block
+            add2resolver = True
+        else:
+            key = self.config.redis_key_unknown
+        await self.redis.sadd(key, host)
+        if add2resolver:
+            await self.add_domains(host)
+            logger.info(f'added {host} to {self.resolver_key}')
+
     @staticmethod
     async def is_blocked(host):
+
         inspect_msg = 'Your client does not have permission to get URL'
+        timeout = aiohttp.ClientTimeout(sock_read=60)
         # noinspection HttpUrlsUsage
         for schema in ['https://', 'http://']:
             url = schema + host
             try:
                 logger.info(f'checking {url} for google 403')
-                async with aiohttp.ClientSession() as session:
+                async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.get(url) as resp:
                         logger.debug(f'{url} responded with code {resp.status}')
                         if resp.status == 403 and inspect_msg in await resp.text():
@@ -119,7 +125,7 @@ class Inquirer(_Authoritative):
                             return 'b'
                         logger.info(f'{url} is open')
                         return 'o'
-            except ClientError as e:
+            except (ClientError, ServerTimeoutError) as e:
                 logger.error(f'error getting {url} [{e}]')
         return 'u'
 
