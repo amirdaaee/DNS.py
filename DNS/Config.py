@@ -21,6 +21,7 @@ port_type = conint(ge=0, le=65353)
 class _BaseSettingType(BaseSettings):
     local_ip: IPv4Address = Field(title='local ip to bind', default='127.0.0.1')
     local_port: port_type = Field(title='local port to bind', default='5053')
+    workers: int = Field(title='number of workers', default=1)
     upstream_ip: IPv4Address = Field(title='upstream DNS server ip', default='8.8.8.8')
     upstream_port: port_type = Field(title='upstream DNS server port', default=53)
     plugins: List[str] = Field(title='plugins to activate', default=[])

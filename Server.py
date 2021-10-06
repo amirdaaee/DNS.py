@@ -104,7 +104,8 @@ def main():
     print(f'configuration: {DNS.Config.Settings.json()}')
     loop = asyncio.get_event_loop()
     loop.create_task(DNS.Core.UDPDNSServer().start())
-    aiorun.run(loop=loop, executor_workers=2)
+    workers = DNS.Config.Settings.workers
+    aiorun.run(loop=loop, executor_workers=workers)
 
 
 if __name__ == '__main__':
