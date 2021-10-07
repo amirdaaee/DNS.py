@@ -1,10 +1,9 @@
 import asyncio
-from asyncio.exceptions import TimeoutError
 from typing import Optional
 
 import aiohttp
 import dns.rdatatype
-from aiohttp.client_exceptions import ClientError,ServerTimeoutError
+from aiohttp.client_exceptions import ClientError, ServerTimeoutError
 from pydantic import Field
 from pydantic import RedisDsn
 
@@ -70,6 +69,7 @@ class Inquirer(_Authoritative):
         asyncio.get_event_loop().create_task(self._init_inquirer())
 
     async def add_domains(self, *domains):
+        domains = [x.replace('www.', '', 1) if x.startswith('www.') else x for x in domains]
         subdomains = ['*.' + x for x in domains]
         await self.resolver.redis.sadd(self.resolver_key, *[*domains, *subdomains])
 

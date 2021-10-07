@@ -33,11 +33,11 @@ class UDPAsyncServer(asyncio.protocols.DatagramProtocol):
     async def start(self):
         loop = asyncio.get_running_loop()
         self.transport, _ = await loop.create_datagram_endpoint(self.factory, local_addr=self.local_addr)
-        logger.info('server started')
+        logger.warning('server started')
 
     async def stop(self):
         self.transport.close()
-        logger.info('server stopped')
+        logger.warning('server stopped')
 
 
 class UDPDNSServer(UDPAsyncServer):
